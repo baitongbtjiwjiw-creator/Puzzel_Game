@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>เกมที่ 3 — ผสมสารยับยั้ง</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg0:#070b22; --bg1:#0f1640;
+    --ink:#eaf0ff; --ink-dim:#9fb0e0; --accent:#7ef0d0;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; height:100%;}
+  body{
+    font-family:'Sarabun',sans-serif; color:var(--ink);
+    background:
+      radial-gradient(120% 80% at 50% -10%, #22307e 0%, transparent 55%),
+      radial-gradient(90% 70% at 80% 110%, #1a2470 0%, transparent 60%),
+      linear-gradient(160deg,var(--bg0),var(--bg1) 60%,var(--bg0));
+    min-height:100%; overflow-x:hidden;
+    display:flex; flex-direction:column; align-items:center;
+    padding:16px 14px 26px;
+  }
+  header{text-align:center; margin-bottom:4px; z-index:1;}
+  .eyebrow{font-family:'Space Grotesk'; letter-spacing:.32em; font-size:12px;
+    color:var(--ink-dim); text-transform:uppercase;}
+  h1{font-family:'Space Grotesk'; font-weight:700; font-size:25px; margin:4px 0 2px;
+    letter-spacing:.5px;
+    background:linear-gradient(90deg,#7ef0d0,#c58bff);
+    -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .sub{font-size:13.5px; color:var(--ink-dim);}
+
+  /* target formulas */
+  .targets{display:flex; gap:14px; margin:14px 0 6px; z-index:1;}
+  .tube{width:40px; height:78px; position:relative;
+    border:2px solid rgba(200,220,255,.35); border-top:none;
+    border-radius:6px 6px 16px 16px; overflow:hidden;
+    background:rgba(255,255,255,.03);}
+  .tube .fill{position:absolute; left:0; right:0; bottom:0; height:0%;
+    transition:height .5s ease; opacity:.95;}
+  .tube.done{border-color:rgba(126,240,208,.7); box-shadow:0 0 16px rgba(126,240,208,.35);}
+  .tube .chk{position:absolute; inset:0; display:grid; place-items:center;
+    font-size:22px; opacity:0; transition:opacity .3s; color:#fff;
+    text-shadow:0 1px 4px rgba(0,0,0,.5);}
+  .tube.done .chk{opacity:1;}
+  .tlabel{font-size:12px; color:var(--ink-dim); margin-top:12px; z-index:1;}
+  .tgt-wrap{display:flex; flex-direction:column; align-items:center; gap:7px;}
+  .tnum{font-family:'Space Grotesk'; font-weight:700; font-size:12px; color:var(--ink-dim);}
+  .tube.done + .tnum, .tgt-wrap .tube.done ~ .tnum{color:var(--accent);}
+
+  /* mixing station */
+  .station{display:flex; flex-direction:column; align-items:center; margin:8px 0; z-index:1;}
+  .beaker{width:118px; height:140px; position:relative; overflow:hidden;
+    border:3px solid rgba(200,220,255,.4); border-radius:12px 12px 26px 26px;
+    background:rgba(255,255,255,.03);
+    box-shadow:inset 0 0 30px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);}
+  .beaker::before{content:''; position:absolute; top:8px; left:12px; width:12px; height:70%;
+    background:linear-gradient(rgba(255,255,255,.28),transparent); border-radius:8px; z-index:3;}
+  .liquid{position:absolute; left:0; right:0; bottom:0; height:12%;
+    background:rgba(160,190,230,.15);
+    transition:height .45s ease, background .45s ease;}
+  .liquid::after{content:''; position:absolute; top:-6px; left:0; right:0; height:8px;
+    background:inherit; filter:brightness(1.2); border-radius:50%;}
+  .bub{position:absolute; bottom:6%; border-radius:50%; background:rgba(255,255,255,.5);
+    animation:rise linear infinite;}
+  @keyframes rise{from{transform:translateY(0);opacity:.6}to{transform:translateY(-120px);opacity:0}}
+  .beaker.win{animation:flash .7s ease;}
+  @keyframes flash{0%,100%{box-shadow:inset 0 0 30px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35)}
+    40%{box-shadow:0 0 40px 10px rgba(126,240,208,.8), inset 0 0 30px rgba(126,240,208,.4)}}
+  .beaker.bad{animation:nudge .35s ease;}
+  @keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+
+  .slots{display:flex; gap:10px; margin:12px 0 4px;}
+  .slot{width:34px;height:34px;border-radius:10px; border:2px dashed rgba(255,255,255,.2);
+    display:grid;place-items:center; font-size:16px; color:var(--ink-dim);}
+  .plus{align-self:center; color:var(--ink-dim); font-weight:700;}
+
+  .actions{display:flex; gap:10px; margin-top:8px;}
+  .btn{font-family:'Sarabun'; font-weight:600; font-size:14px; color:var(--ink);
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
+    padding:9px 18px; border-radius:12px; cursor:pointer; transition:.15s;}
+  .btn:hover{background:rgba(255,255,255,.12);}
+  .btn:active{transform:scale(.96);}
+  .btn.primary{background:linear-gradient(90deg,#7ef0d0,#c58bff); border:none; color:#08122a; font-weight:700;}
+  .btn:disabled{opacity:.35; cursor:default;}
+
+  /* reagent shelf */
+  .shelf-label{font-size:13px; color:var(--ink-dim); margin:16px 0 8px; z-index:1;}
+  .shelf{display:flex; flex-wrap:wrap; gap:14px; justify-content:center; max-width:420px; z-index:1;}
+  .bottle{width:46px; height:66px; position:relative; cursor:pointer; border:none;
+    background:none; padding:0; transition:transform .16s ease;}
+  .bottle:active{transform:scale(.92);}
+  .bottle.sel{transform:translateY(-8px) scale(1.06);}
+  .bottle .glass{position:absolute; bottom:0; left:5px; right:5px; height:52px;
+    border:2px solid rgba(255,255,255,.35); border-radius:8px 8px 12px 12px; overflow:hidden;
+    background:rgba(255,255,255,.05);}
+  .bottle .liq{position:absolute; left:0; right:0; bottom:0; height:74%;}
+  .bottle .neck{position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:16px; height:16px; background:rgba(255,255,255,.25); border-radius:4px 4px 0 0;}
+  .bottle .cap{position:absolute; top:-4px; left:50%; transform:translateX(-50%);
+    width:20px; height:8px; background:#c9d6f5; border-radius:4px;}
+  .bottle.sel .glass{border-color:#fff; box-shadow:0 0 0 2px #fff;}
+
+  .win-ov{position:fixed; inset:0; z-index:5; display:none; place-items:center;
+    background:rgba(6,10,30,.72); backdrop-filter:blur(6px);}
+  .win-ov.show{display:grid; animation:fade .4s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .card{background:linear-gradient(160deg,#12194a,#0b1030);
+    border:1px solid rgba(140,180,255,.25); border-radius:24px;
+    padding:32px 28px; text-align:center; max-width:340px; width:88%;
+    box-shadow:0 20px 60px rgba(0,0,0,.5), 0 0 60px rgba(126,240,208,.15);
+    animation:pop .5s cubic-bezier(.2,1.3,.4,1);}
+  @keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+  .card .ok{font-size:40px; margin-bottom:6px;}
+  .card h2{font-family:'Space Grotesk'; margin:6px 0 4px; font-size:22px;
+    background:linear-gradient(90deg,#7ef0d0,#c58bff);
+    -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .card p{color:var(--ink-dim); font-size:14px; margin:6px 0 20px;}
+  .card .btn{background:linear-gradient(90deg,#7ef0d0,#c58bff); border:none; color:#08122a; font-weight:700;}
+  .confetti{position:fixed; width:10px;height:10px; border-radius:3px; z-index:6; pointer-events:none;}
+  .toast{position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px);
+    background:rgba(255,120,120,.16); border:1px solid rgba(255,120,120,.5); color:#ffcaca;
+    padding:11px 20px; border-radius:12px; font-size:14px; font-weight:600; z-index:8;
+    opacity:0; pointer-events:none; transition:opacity .25s ease, transform .25s ease;
+    box-shadow:0 8px 24px rgba(0,0,0,.35);}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Lab Mission · Puzzle 3</div>
+  <h1>ผสมสารยับยั้ง</h1>
+  <div class="sub">ผสมสาร 2 ขวดให้ได้สีตรงกับสูตรที่ต้องการ</div>
+</header>
+
+<div class="targets" id="targets"></div>
+<div class="tlabel">สูตรที่ต้องผสม</div>
+
+<div class="station">
+  <div class="beaker" id="beaker">
+    <div class="liquid" id="liquid"></div>
+  </div>
+  <div class="slots">
+    <div class="slot" id="slot0"></div>
+    <div class="plus">+</div>
+    <div class="slot" id="slot1"></div>
+  </div>
+  <div class="actions">
+    <button class="btn" id="clear">เทออก</button>
+    <button class="btn primary" id="mix" disabled>ผสม</button>
+  </div>
+</div>
+
+<div class="shelf-label">แตะเลือกสาร 2 ขวด</div>
+<div class="shelf" id="shelf"></div>
+
+<div style="margin-top:16px; z-index:1;">
+  <button class="btn" id="hint">💡 ใบ้</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="win-ov" id="win">
+  <div class="card">
+    <div class="ok">🧪✨</div>
+    <h2>ผสมสารยับยั้งสำเร็จ!</h2>
+    <p>ได้สารครบทุกสูตรแล้ว เก่งมาก!</p>
+  </div>
+</div>
+
+<script>
+// ---- reagents ----
+const REAGENTS = [
+  {name:'ฟ้า',   rgb:[47,107,255]},
+  {name:'เหลือง',rgb:[255,210,31]},
+  {name:'แดง',   rgb:[255,59,78]},
+  {name:'เขียวมิ้นต์',rgb:[35,213,200]},
+  {name:'ม่วงแดง',rgb:[255,79,216]},
+  {name:'เขียวมะนาว',rgb:[139,255,58]},
+];
+// คู่ผสมที่ให้สีสวย/ต่างกันชัด (index อ้างถึง REAGENTS)
+const CANDIDATES = [
+  [2,1],[0,4],[3,1],[0,3],[2,0],[4,1],[3,4],[5,0]
+];
+
+const rgbStr = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+const blend = (a,b) => a.map((v,i)=>Math.round((v+b[i])/2));
+const dist = (a,b) => Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+
+let targets = [];      // [{pair:[i,j], color, done}]
+let selected = [];     // reagent indices (max 2)
+
+const shelf = document.getElementById('shelf');
+const targetsEl = document.getElementById('targets');
+const liquid = document.getElementById('liquid');
+const beaker = document.getElementById('beaker');
+const mixBtn = document.getElementById('mix');
+
+function buildLevel(){
+  selected=[];
+  document.getElementById('win').classList.remove('show');
+  // เลือก 3 คู่ ที่สีเป้าหมายต่างกันชัด
+  let chosen=[];
+  let tries=0;
+  while(chosen.length<3 && tries<400){
+    tries++;
+    const p = CANDIDATES[(Math.random()*CANDIDATES.length)|0];
+    const color = blend(REAGENTS[p[0]].rgb, REAGENTS[p[1]].rgb);
+    if(chosen.some(c=> dist(c.color,color)<70 || (c.pair[0]===p[0]&&c.pair[1]===p[1]))) continue;
+    chosen.push({pair:[...p], color, done:false});
+  }
+  targets = chosen;
+  renderTargets();
+  renderShelf();
+  updateStation();
+}
+
+function renderTargets(){
+  targetsEl.innerHTML='';
+  targets.forEach((t,i)=>{
+    const wrap=document.createElement('div'); wrap.className='tgt-wrap';
+    const tube=document.createElement('div'); tube.className='tube'; tube.id='tgt'+i;
+    tube.innerHTML=`<div class="fill" style="background:${rgbStr(t.color)}"></div><div class="chk">✓</div>`;
+    const num=document.createElement('div'); num.className='tnum'; num.textContent='สีที่ '+(i+1);
+    wrap.appendChild(tube); wrap.appendChild(num);
+    targetsEl.appendChild(wrap);
+    // fill to show the target color
+    requestAnimationFrame(()=>{ tube.querySelector('.fill').style.height='80%'; });
+  });
+}
+
+function renderShelf(){
+  shelf.innerHTML='';
+  REAGENTS.forEach((r,i)=>{
+    const b=document.createElement('button'); b.className='bottle'; b.dataset.i=i;
+    b.innerHTML=`<div class="cap"></div><div class="neck"></div>
+      <div class="glass"><div class="liq" style="background:${rgbStr(r.rgb)};
+        box-shadow:0 0 14px ${rgbStr(r.rgb)}99 inset, 0 0 10px ${rgbStr(r.rgb)}66;"></div></div>`;
+    b.addEventListener('click',()=>toggle(i,b));
+    shelf.appendChild(b);
+  });
+}
+
+let toastTimer;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),1600);
+}
+
+function toggle(i,b){
+  const pos=selected.indexOf(i);
+  if(pos>=0){ selected.splice(pos,1); }
+  else if(selected.length<2){ selected.push(i); }
+  else { showToast('⚠️ ผสมได้ครั้งละ 2 ขวดเท่านั้น'); return; }
+  // update selected visuals
+  document.querySelectorAll('.bottle').forEach(el=>{
+    el.classList.toggle('sel', selected.includes(+el.dataset.i));
+  });
+  updateStation();
+}
+
+function updateStation(){
+  // slots
+  [0,1].forEach(s=>{
+    const slot=document.getElementById('slot'+s);
+    if(selected[s]!==undefined){
+      slot.style.background=rgbStr(REAGENTS[selected[s]].rgb);
+      slot.style.borderStyle='solid'; slot.textContent='';
+    }else{ slot.style.background='transparent'; slot.style.borderStyle='dashed'; slot.textContent=''; }
+  });
+  // beaker liquid preview
+  if(selected.length===0){
+    liquid.style.height='12%'; liquid.style.background='rgba(160,190,230,.15)';
+  }else if(selected.length===1){
+    liquid.style.height='45%'; liquid.style.background=rgbStr(REAGENTS[selected[0]].rgb);
+  }else{
+    const mix=blend(REAGENTS[selected[0]].rgb, REAGENTS[selected[1]].rgb);
+    liquid.style.height='70%'; liquid.style.background=rgbStr(mix);
+    addBubbles(mix);
+  }
+  mixBtn.disabled = selected.length!==2;
+}
+
+function addBubbles(color){
+  beaker.querySelectorAll('.bub').forEach(b=>b.remove());
+  for(let k=0;k<5;k++){
+    const b=document.createElement('div'); b.className='bub';
+    const s=4+Math.random()*6;
+    b.style.width=b.style.height=s+'px';
+    b.style.left=(15+Math.random()*70)+'%';
+    b.style.animationDuration=(1.6+Math.random()*1.4)+'s';
+    b.style.animationDelay=(Math.random()*1.5)+'s';
+    beaker.appendChild(b);
+  }
+}
+
+document.getElementById('mix').addEventListener('click',()=>{
+  if(selected.length!==2) return;
+  const mix=blend(REAGENTS[selected[0]].rgb, REAGENTS[selected[1]].rgb);
+  const idx=targets.findIndex(t=>!t.done && dist(t.color,mix)<22);
+  if(idx>=0){
+    targets[idx].done=true;
+    document.getElementById('tgt'+idx).classList.add('done');
+    beaker.classList.add('win');
+    sparkle(mix);
+    setTimeout(()=>{ beaker.classList.remove('win'); clearSel(); },700);
+    if(targets.every(t=>t.done)) setTimeout(win,750);
+  }else{
+    // ขุ่น + สั่น
+    liquid.style.background='rgb(120,110,95)';
+    beaker.classList.add('bad');
+    setTimeout(()=>{ beaker.classList.remove('bad'); clearSel(); },500);
+  }
+});
+
+document.getElementById('clear').addEventListener('click',clearSel);
+function clearSel(){
+  selected=[];
+  document.querySelectorAll('.bottle').forEach(el=>el.classList.remove('sel'));
+  beaker.querySelectorAll('.bub').forEach(b=>b.remove());
+  updateStation();
+}
+
+document.getElementById('hint').addEventListener('click',()=>{
+  const t=targets.find(t=>!t.done);
+  if(!t) return;
+  t.pair.forEach(i=>{
+    const b=document.querySelector(`.bottle[data-i="${i}"] .glass`);
+    b.animate([
+      {boxShadow:'0 0 0 0 rgba(255,255,255,0)'},
+      {boxShadow:'0 0 0 4px rgba(255,255,255,.9)'},
+      {boxShadow:'0 0 0 0 rgba(255,255,255,0)'}
+    ],{duration:900});
+  });
+});
+
+function sparkle(color){
+  for(let i=0;i<18;i++){
+    const d=document.createElement('div'); d.className='confetti';
+    d.style.background=rgbStr(color);
+    const r=beaker.getBoundingClientRect();
+    d.style.left=(r.left+r.width/2)+'px'; d.style.top=(r.top+r.height/2)+'px';
+    document.body.appendChild(d);
+    const ang=Math.random()*Math.PI*2, dl=60+Math.random()*90;
+    d.animate([
+      {transform:'translate(-50%,-50%) scale(1)',opacity:1},
+      {transform:`translate(${Math.cos(ang)*dl-50}%,${Math.sin(ang)*dl-50}%) scale(0)`,opacity:0}
+    ],{duration:700+Math.random()*400,easing:'ease-out'});
+    setTimeout(()=>d.remove(),1200);
+  }
+}
+
+function win(){
+  document.getElementById('win').classList.add('show');
+  const cols=['#7ef0d0','#c58bff','#ffd21f','#ff5bb0'];
+  for(let i=0;i<60;i++){
+    const d=document.createElement('div'); d.className='confetti';
+    d.style.background=cols[i%4]; d.style.left='50%'; d.style.top='40%';
+    document.body.appendChild(d);
+    const ang=Math.random()*Math.PI*2, dl=120+Math.random()*260;
+    d.animate([
+      {transform:'translate(-50%,-50%) rotate(0deg)',opacity:1},
+      {transform:`translate(${Math.cos(ang)*dl-50}%,${Math.sin(ang)*dl-50}%) rotate(${Math.random()*720}deg)`,opacity:0}
+    ],{duration:1100+Math.random()*700,easing:'cubic-bezier(.15,.7,.3,1)'});
+    setTimeout(()=>d.remove(),1900);
+  }
+}
+
+buildLevel();
+</script>
+</body>
+</html>
