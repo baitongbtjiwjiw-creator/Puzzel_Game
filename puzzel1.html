@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>เกมที่ 1 — ต่อเกลียว DNA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg0:#070b22; --bg1:#0f1640; --bg2:#161f5c;
+    --A:#34e5a3; --T:#ffb454; --G:#4da6ff; --C:#ff6bb5;
+    --ink:#eaf0ff; --ink-dim:#9fb0e0; --bond:#bcd4ff;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; height:100%;}
+  body{
+    font-family:'Sarabun',sans-serif; color:var(--ink);
+    background:
+      radial-gradient(120% 80% at 50% -10%, #22307e 0%, transparent 55%),
+      radial-gradient(90% 70% at 80% 110%, #1a2470 0%, transparent 60%),
+      linear-gradient(160deg,var(--bg0),var(--bg1) 60%,var(--bg0));
+    min-height:100%; overflow-x:hidden;
+    display:flex; flex-direction:column; align-items:center;
+    padding:18px 14px 28px;
+  }
+  /* floating ambient particles */
+  .amb{position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;}
+  .amb i{position:absolute; width:4px;height:4px;border-radius:50%;
+    background:var(--bond); opacity:.18; filter:blur(.5px);
+    animation:float linear infinite;}
+  @keyframes float{from{transform:translateY(20px)}to{transform:translateY(-110vh)}}
+
+  header{position:relative; z-index:1; text-align:center; margin-bottom:6px;}
+  .eyebrow{font-family:'Space Grotesk'; letter-spacing:.32em; font-size:12px;
+    color:var(--ink-dim); text-transform:uppercase;}
+  h1{font-family:'Space Grotesk'; font-weight:700; font-size:26px; margin:4px 0 2px;
+    letter-spacing:.5px;
+    background:linear-gradient(90deg,var(--A),var(--G),var(--C));
+    -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .sub{font-size:14px; color:var(--ink-dim);}
+
+  /* pairing legend */
+  .rules{display:flex; gap:10px; margin:12px 0 6px; z-index:1;}
+  .rule{display:flex; align-items:center; gap:6px; font-family:'Space Grotesk';
+    font-size:13px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08);
+    padding:5px 11px; border-radius:999px;}
+  .dot{width:16px;height:16px;border-radius:50%; display:grid; place-items:center;
+    font-size:10px; font-weight:700; color:#0a0e22;}
+
+  .stage{position:relative; z-index:1; width:100%; max-width:420px;}
+  svg{width:100%; height:auto; display:block; overflow:visible;}
+  .slot-hit{cursor:pointer;}
+  .node-letter{font-family:'Space Grotesk'; font-weight:700; font-size:22px;
+    fill:#08122a; text-anchor:middle; dominant-baseline:central; pointer-events:none;}
+  .slot-q{fill:var(--ink-dim); font-family:'Space Grotesk'; font-size:22px;
+    text-anchor:middle; dominant-baseline:central; pointer-events:none; opacity:.6;}
+
+  /* tray */
+  .tray-label{text-align:center; color:var(--ink-dim); font-size:13px; margin:10px 0 8px; z-index:1;}
+  .tray{display:flex; flex-wrap:wrap; gap:12px; justify-content:center;
+    max-width:420px; z-index:1; min-height:64px;}
+  .tile{width:56px;height:56px;border-radius:16px; border:none; cursor:grab;
+    font-family:'Space Grotesk'; font-weight:700; font-size:24px; color:#08122a;
+    position:relative; transition:transform .16s ease, box-shadow .16s ease;
+    display:grid; place-items:center; touch-action:none; user-select:none;}
+  .tile:active{cursor:grabbing;}
+  .tile.dragging{opacity:.22;}
+  .tile.ghost{position:fixed; left:0; top:0; z-index:60; margin:0; pointer-events:none;
+    transform:translate(-50%,-50%) scale(1.12); transition:none; cursor:grabbing;}
+  .tile.used{opacity:0; transform:scale(.4); pointer-events:none;}
+
+  .controls{display:flex; gap:12px; margin-top:18px; z-index:1;}
+  .btn{font-family:'Sarabun'; font-weight:600; font-size:14px; color:var(--ink);
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
+    padding:10px 20px; border-radius:12px; cursor:pointer; transition:.15s;}
+  .btn:hover{background:rgba(255,255,255,.12);}
+  .btn:active{transform:scale(.96);}
+
+  /* win overlay */
+  .win{position:fixed; inset:0; z-index:5; display:none; place-items:center;
+    background:rgba(6,10,30,.72); backdrop-filter:blur(6px);}
+  .win.show{display:grid; animation:fade .4s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .card{background:linear-gradient(160deg,#12194a,#0b1030);
+    border:1px solid rgba(140,180,255,.25); border-radius:24px;
+    padding:32px 28px; text-align:center; max-width:340px; width:88%;
+    box-shadow:0 20px 60px rgba(0,0,0,.5), 0 0 60px rgba(77,166,255,.15);
+    animation:pop .5s cubic-bezier(.2,1.3,.4,1);}
+  @keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+  .card .ok{font-size:40px; margin-bottom:6px;}
+  .card h2{font-family:'Space Grotesk'; margin:6px 0 4px; font-size:22px;
+    background:linear-gradient(90deg,var(--A),var(--C));
+    -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .card p{color:var(--ink-dim); font-size:14px; margin:6px 0 20px;}
+  .card .btn{background:linear-gradient(90deg,var(--G),var(--C)); border:none; color:#08122a; font-weight:700;}
+
+  .confetti{position:fixed; width:10px;height:10px; border-radius:3px; z-index:6; pointer-events:none;}
+</style>
+</head>
+<body>
+<div class="amb" id="amb"></div>
+
+<header>
+  <div class="eyebrow">Lab Mission · Puzzle 1</div>
+  <h1>ต่อเกลียว DNA</h1>
+  <div class="sub">จับคู่เบสให้ครบ แล้วเกลียวจะสว่างขึ้น</div>
+</header>
+
+<div class="rules">
+  <div class="rule"><span class="dot" style="background:var(--A)">A</span>–<span class="dot" style="background:var(--T)">T</span></div>
+  <div class="rule"><span class="dot" style="background:var(--G)">G</span>–<span class="dot" style="background:var(--C)">C</span></div>
+</div>
+
+<div class="stage">
+  <svg id="helix" viewBox="0 0 400 560" aria-label="DNA helix"></svg>
+</div>
+
+<div class="tray-label">ลากเบสจากถาดขึ้นไปวางที่ช่องว่างบนเกลียว</div>
+<div class="tray" id="tray"></div>
+
+<div class="controls">
+  <button class="btn" id="hint">💡 ใบ้</button>
+  <button class="btn" id="reset">↻ เริ่มใหม่</button>
+</div>
+
+<div class="win" id="win">
+  <div class="card">
+    <div class="ok">🧬✨</div>
+    <h2>วิเคราะห์ DNA สำเร็จ!</h2>
+    <p>ต่อเกลียว DNA ได้ครบสมบูรณ์แล้ว เก่งมาก!</p>
+  </div>
+</div>
+
+<script>
+const PAIR = {A:'T', T:'A', G:'C', C:'G'};
+const COLOR = {A:'#34e5a3', T:'#ffb454', G:'#4da6ff', C:'#ff6bb5'};
+const BASES = ['A','T','G','C'];
+const N = 5;                    // จำนวนขั้นบันได
+const SVG = document.getElementById('helix');
+const TRAY = document.getElementById('tray');
+const CX = 200, R = 92, TOP = 70, BOT = 490;
+const NS = 'http://www.w3.org/2000/svg';
+
+let level = [];        // [{L, ans, filled, rx, ry, lx, ly}]
+let solvedCount = 0;
+
+// ---- ambient particles ----
+(function(){
+  const amb = document.getElementById('amb');
+  for(let i=0;i<24;i++){
+    const p=document.createElement('i');
+    p.style.left=Math.random()*100+'%';
+    p.style.animationDuration=(8+Math.random()*10)+'s';
+    p.style.animationDelay=(-Math.random()*15)+'s';
+    p.style.opacity=(.08+Math.random()*.18);
+    amb.appendChild(p);
+  }
+})();
+
+function el(tag, attrs){
+  const e=document.createElementNS(NS,tag);
+  for(const k in attrs) e.setAttribute(k,attrs[k]);
+  return e;
+}
+function phase(y){ return (y-TOP)/(BOT-TOP) * Math.PI * 2.4; }
+function strandX(y, side){ return CX + side*R*Math.cos(phase(y)); }
+
+function buildLevel(){
+  level=[]; solvedCount=0;
+  const ys=[];
+  for(let i=0;i<N;i++) ys.push(TOP + (BOT-TOP)*i/(N-1));
+  for(const y of ys){
+    const L = BASES[Math.floor(Math.random()*4)];
+    // left strand is the "given" side; slot is the other
+    const lx = strandX(y,-1), rx = strandX(y,1);
+    level.push({L, ans:PAIR[L], filled:false, y, lx, rx});
+  }
+}
+
+function render(){
+  SVG.innerHTML='';
+  // defs: glow filter
+  const defs=el('defs',{});
+  defs.innerHTML=`
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2"/>
+    </filter>`;
+  SVG.appendChild(defs);
+
+  // ---- backbone strands (finely sampled sine) ----
+  for(const side of [-1,1]){
+    let d='M ';
+    for(let y=TOP; y<=BOT; y+=6){
+      d += `${strandX(y,side).toFixed(1)} ${y} `;
+      if(y===TOP) d+='L ';
+    }
+    SVG.appendChild(el('path',{d, fill:'none', stroke:'url(#bbgrad)',
+      'stroke-width':6, 'stroke-linecap':'round', opacity:.55}));
+  }
+  // gradient for backbone
+  const g=el('linearGradient',{id:'bbgrad', x1:0,y1:0,x2:0,y2:1});
+  g.innerHTML=`<stop offset="0" stop-color="#8fb8ff"/><stop offset="1" stop-color="#6f8fff"/>`;
+  defs.appendChild(g);
+
+  // ---- rungs ----
+  level.forEach((r,i)=>{
+    const depth = 1 + 0.14*Math.sin(phase(r.y)); // fake 3D pop
+    const rad = 26*depth;
+
+    // bond line
+    const bond = el('line',{x1:r.lx,y1:r.y,x2:r.rx,y2:r.y,
+      stroke:'var(--bond)','stroke-width':3, opacity:r.filled?.9:.15,
+      'stroke-linecap':'round'});
+    bond.dataset.bond=i;
+    if(r.filled) bond.setAttribute('filter','url(#glow)');
+    SVG.appendChild(bond);
+
+    // LEFT node (given)
+    const lg=el('g',{transform:`translate(${r.lx},${r.y})`});
+    lg.appendChild(el('circle',{r:rad, fill:COLOR[r.L], filter:'url(#glow)'}));
+    lg.appendChild(el('circle',{r:rad, fill:'none', stroke:'#fff', 'stroke-width':1.5, opacity:.5}));
+    const lt=el('text',{class:'node-letter'}); lt.textContent=r.L;
+    lg.appendChild(lt);
+    SVG.appendChild(lg);
+
+    // RIGHT node (slot or filled)
+    const rgg=el('g',{transform:`translate(${r.rx},${r.y})`, class:'slot-hit'});
+    rgg.dataset.slot=i;
+    if(r.filled){
+      rgg.appendChild(el('circle',{r:rad, fill:COLOR[r.ans], filter:'url(#glow)'}));
+      rgg.appendChild(el('circle',{r:rad, fill:'none', stroke:'#fff','stroke-width':1.5, opacity:.5}));
+      const t=el('text',{class:'node-letter'}); t.textContent=r.ans; rgg.appendChild(t);
+    }else{
+      rgg.appendChild(el('circle',{r:rad, fill:'rgba(255,255,255,.04)',
+        stroke:'var(--ink-dim)', 'stroke-width':2, 'stroke-dasharray':'5 5'}));
+      const q=el('text',{class:'slot-q'}); q.textContent='?'; rgg.appendChild(q);
+    }
+    SVG.appendChild(rgg);
+  });
+}
+
+function buildTray(){
+  TRAY.innerHTML='';
+  const needed = level.filter(r=>!r.filled).map(r=>r.ans);
+  // shuffle
+  for(let i=needed.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[needed[i],needed[j]]=[needed[j],needed[i]];}
+  needed.forEach(letter=>{
+    const b=document.createElement('button');
+    b.className='tile'; b.textContent=letter;
+    b.style.background=COLOR[letter];
+    b.style.boxShadow=`0 0 22px ${COLOR[letter]}66, 0 6px 16px rgba(0,0,0,.35)`;
+    b.dataset.letter=letter;
+    b.addEventListener('pointerdown',e=>startDrag(e,b));
+    TRAY.appendChild(b);
+  });
+}
+
+// ---- drag & drop ----
+let drag=null;   // {letter, tile, ghost}
+
+function startDrag(e, tile){
+  if(tile.classList.contains('used') || drag) return;
+  e.preventDefault();
+  const letter=tile.dataset.letter;
+  const ghost=document.createElement('div');
+  ghost.className='tile ghost'; ghost.textContent=letter;
+  ghost.style.background=COLOR[letter];
+  ghost.style.boxShadow=`0 0 26px ${COLOR[letter]}99, 0 10px 22px rgba(0,0,0,.45)`;
+  document.body.appendChild(ghost);
+  drag={letter, tile, ghost};
+  tile.classList.add('dragging');
+  moveGhost(e.clientX, e.clientY);
+  window.addEventListener('pointermove', onMove, {passive:false});
+  window.addEventListener('pointerup', onUp);
+}
+
+function moveGhost(x,y){
+  drag.ghost.style.left=x+'px';
+  drag.ghost.style.top=y+'px';
+}
+function onMove(e){ if(!drag) return; e.preventDefault(); moveGhost(e.clientX,e.clientY); }
+
+function nearestSlot(px,py){
+  let best=null,bestD=1e9;
+  document.querySelectorAll('.slot-hit').forEach(g=>{
+    const i=+g.dataset.slot; if(level[i].filled) return;
+    const r=g.getBoundingClientRect();
+    const cx=r.left+r.width/2, cy=r.top+r.height/2;
+    const d=Math.hypot(px-cx,py-cy);
+    if(d<bestD){bestD=d;best={i,g};}
+  });
+  return best && bestD<64 ? best : null;
+}
+
+function onUp(e){
+  if(!drag) return;
+  const tile=drag.tile;
+  const hit=nearestSlot(e.clientX,e.clientY);
+  window.removeEventListener('pointermove', onMove);
+  window.removeEventListener('pointerup', onUp);
+  drag.ghost.remove();
+
+  if(hit && drag.letter===level[hit.i].ans){
+    level[hit.i].filled=true; solvedCount++;
+    tile.classList.add('used'); setTimeout(()=>tile.remove(),200);
+    drag=null;
+    render();
+    if(solvedCount===N) setTimeout(win,450);
+  }else{
+    if(hit) shake(hit.g);        // วางผิดช่อง → สั่นเบาๆ
+    tile.classList.remove('dragging');
+    drag=null;
+  }
+}
+
+function shake(g){
+  const base=g.getAttribute('transform');
+  g.animate([
+    {transform:base+' translate(-6px,0)'},
+    {transform:base+' translate(6px,0)'},
+    {transform:base+' translate(-4px,0)'},
+    {transform:base+' translate(0,0)'}
+  ],{duration:280});
+}
+
+function showHint(){
+  // สว่างช่องว่างที่เหลือด้วยสีคำตอบแวบนึง
+  document.querySelectorAll('.slot-hit').forEach(g=>{
+    const i=+g.dataset.slot; const r=level[i];
+    if(r.filled) return;
+    const c=g.querySelector('circle');
+    c.animate([
+      {fill:'rgba(255,255,255,.04)', stroke:'var(--ink-dim)'},
+      {fill:COLOR[r.ans]+'55', stroke:COLOR[r.ans]},
+      {fill:'rgba(255,255,255,.04)', stroke:'var(--ink-dim)'}
+    ],{duration:900});
+  });
+}
+
+function win(){
+  document.getElementById('win').classList.add('show');
+  burst();
+}
+function burst(){
+  const cols=Object.values(COLOR);
+  for(let i=0;i<60;i++){
+    const d=document.createElement('div');
+    d.className='confetti';
+    d.style.background=cols[i%4];
+    d.style.left='50%'; d.style.top='40%';
+    document.body.appendChild(d);
+    const ang=Math.random()*Math.PI*2, dist=120+Math.random()*260;
+    d.animate([
+      {transform:'translate(-50%,-50%) rotate(0deg)', opacity:1},
+      {transform:`translate(${Math.cos(ang)*dist-50}%,${Math.sin(ang)*dist-50}%) rotate(${Math.random()*720}deg)`, opacity:0}
+    ],{duration:1100+Math.random()*700, easing:'cubic-bezier(.15,.7,.3,1)'});
+    setTimeout(()=>d.remove(),1900);
+  }
+}
+
+function start(){
+  document.getElementById('win').classList.remove('show');
+  if(drag){ if(drag.ghost) drag.ghost.remove(); drag=null; }
+  buildLevel(); render(); buildTray();
+}
+
+document.getElementById('reset').addEventListener('click',start);
+document.getElementById('hint').addEventListener('click',showHint);
+
+start();
+</script>
+</body>
+</html>
