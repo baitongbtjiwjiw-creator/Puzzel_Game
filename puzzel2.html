@@ -140,7 +140,6 @@
     <div class="ok">🔬✨</div>
     <h2>ตรวจพบครบแล้ว!</h2>
     <p>แยกเซลล์ที่รูปร่างผิดปกติได้หมดแล้ว เก่งมาก!</p>
-    <button class="btn" id="next">เล่นอีกครั้ง</button>
   </div>
 </div>
 
@@ -283,7 +282,6 @@ function burst(){
 
 document.getElementById('reset').addEventListener('click',makeLevel);
 document.getElementById('hint').addEventListener('click',hint);
-document.getElementById('next').addEventListener('click',makeLevel);
 
 // start after layout settles (so scope has a size)
 window.addEventListener('load',()=>setTimeout(makeLevel,60));
