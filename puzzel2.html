@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>เกมที่ 2 — หา Cell ผิดปกติ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg0:#070b22; --bg1:#0f1640;
+    --ink:#eaf0ff; --ink-dim:#9fb0e0;
+    --good:#4fe3c8; --bad:#ff5b6e;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; height:100%;}
+  body{
+    font-family:'Sarabun',sans-serif; color:var(--ink);
+    background:
+      radial-gradient(120% 80% at 50% -10%, #22307e 0%, transparent 55%),
+      radial-gradient(90% 70% at 80% 110%, #1a2470 0%, transparent 60%),
+      linear-gradient(160deg,var(--bg0),var(--bg1) 60%,var(--bg0));
+    min-height:100%; overflow-x:hidden;
+    display:flex; flex-direction:column; align-items:center;
+    padding:18px 14px 28px;
+  }
+  header{text-align:center; margin-bottom:6px; z-index:1;}
+  .eyebrow{font-family:'Space Grotesk'; letter-spacing:.32em; font-size:12px;
+    color:var(--ink-dim); text-transform:uppercase;}
+  h1{font-family:'Space Grotesk'; font-weight:700; font-size:26px; margin:4px 0 2px;
+    letter-spacing:.5px;
+    background:linear-gradient(90deg,var(--good),var(--bad));
+    -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .sub{font-size:14px; color:var(--ink-dim);}
+
+  .hud{display:flex; align-items:center; gap:12px; margin:12px 0 10px; z-index:1;}
+  .counter{font-family:'Space Grotesk'; font-weight:700; font-size:15px;
+    background:rgba(79,227,200,.12); border:1px solid rgba(79,227,200,.35);
+    color:#a6f7e6; padding:7px 16px; border-radius:999px;}
+  .counter b{color:#fff;}
+
+  /* microscope viewport */
+  .scope{position:relative; width:min(88vw,380px); aspect-ratio:1;
+    border-radius:50%; overflow:hidden; z-index:1;
+    background:
+      radial-gradient(circle at 38% 32%, #14306b 0%, #0a1a45 55%, #050d2a 100%);
+    box-shadow:0 0 0 3px rgba(140,180,255,.15), 0 0 0 12px rgba(10,18,50,.6),
+      0 20px 50px rgba(0,0,0,.5), inset 0 0 80px rgba(0,0,0,.6);
+    touch-action:manipulation;}
+  /* vignette + crosshair */
+  .scope::after{content:''; position:absolute; inset:0; border-radius:50%;
+    pointer-events:none;
+    background:radial-gradient(circle, transparent 60%, rgba(0,0,0,.55) 100%);}
+  .cross{position:absolute; inset:0; pointer-events:none; opacity:.12; z-index:3;}
+  .cross::before,.cross::after{content:''; position:absolute; background:#bcd4ff;}
+  .cross::before{left:50%; top:8%; bottom:8%; width:1px; transform:translateX(-.5px);}
+  .cross::after{top:50%; left:8%; right:8%; height:1px; transform:translateY(-.5px);}
+
+  .cell{position:absolute; border-radius:50%; cursor:pointer; will-change:transform;
+    display:grid; place-items:center;}
+  .cell .nuc{border-radius:50%;}
+  .cell.good{
+    background:radial-gradient(circle at 35% 30%, #9ffff0 0%, #4fe3c8 45%, rgba(40,160,150,.35) 100%);
+    box-shadow:0 0 16px rgba(79,227,200,.4), inset 0 0 12px rgba(255,255,255,.3);}
+  .cell.good .nuc{width:34%;height:34%; background:radial-gradient(circle,#2aa89a,#166b62);}
+  .cell.bad{
+    border-radius:62% 38% 55% 45% / 48% 62% 38% 52%;
+    background:radial-gradient(circle at 38% 30%, #a6f7e6 0%, #43cfb6 45%, rgba(38,150,140,.4) 100%);
+    box-shadow:0 0 15px rgba(79,227,200,.35), inset 0 0 12px rgba(255,255,255,.22);
+    animation:wobble 4.5s ease-in-out infinite;}
+  .cell.bad .nuc{width:42%;height:34%;
+    border-radius:55% 45% 60% 40% / 50% 58% 42% 50%;
+    background:radial-gradient(circle,#1f8f82,#0d564e);}
+  @keyframes wobble{
+    0%,100%{border-radius:62% 38% 55% 45% / 48% 62% 38% 52%}
+    50%{border-radius:42% 58% 40% 60% / 60% 42% 58% 40%}}
+  .cell.found{animation:capture .5s ease forwards; pointer-events:none;}
+  @keyframes capture{
+    0%{box-shadow:0 0 0 0 rgba(79,227,200,.9); opacity:1}
+    60%{box-shadow:0 0 0 18px rgba(79,227,200,0); opacity:1}
+    100%{box-shadow:0 0 0 20px rgba(79,227,200,0); opacity:0}}
+  .ripple{position:absolute; border-radius:50%; pointer-events:none;
+    border:2px solid rgba(180,210,255,.6); animation:rip .5s ease-out forwards;}
+  @keyframes rip{from{transform:scale(.3);opacity:.8}to{transform:scale(2.2);opacity:0}}
+  .check{position:absolute; font-size:20px; pointer-events:none;
+    animation:chk .6s ease forwards;}
+  @keyframes chk{0%{transform:translateY(0) scale(.5);opacity:0}
+    30%{opacity:1}100%{transform:translateY(-40px) scale(1.1);opacity:0}}
+
+  .controls{display:flex; gap:12px; margin-top:18px; z-index:1;}
+  .btn{font-family:'Sarabun'; font-weight:600; font-size:14px; color:var(--ink);
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
+    padding:10px 20px; border-radius:12px; cursor:pointer; transition:.15s;}
+  .btn:hover{background:rgba(255,255,255,.12);}
+  .btn:active{transform:scale(.96);}
+
+  .win{position:fixed; inset:0; z-index:5; display:none; place-items:center;
+    background:rgba(6,10,30,.72); backdrop-filter:blur(6px);}
+  .win.show{display:grid; animation:fade .4s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .card{background:linear-gradient(160deg,#12194a,#0b1030);
+    border:1px solid rgba(140,180,255,.25); border-radius:24px;
+    padding:32px 28px; text-align:center; max-width:340px; width:88%;
+    box-shadow:0 20px 60px rgba(0,0,0,.5), 0 0 60px rgba(79,227,200,.15);
+    animation:pop .5s cubic-bezier(.2,1.3,.4,1);}
+  @keyframes pop{from{transform:scale(.8);opacity:0}to{transform:scale(1);opacity:1}}
+  .card .ok{font-size:40px; margin-bottom:6px;}
+  .card h2{font-family:'Space Grotesk'; margin:6px 0 4px; font-size:22px;
+    background:linear-gradient(90deg,var(--good),var(--bad));
+    -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .card p{color:var(--ink-dim); font-size:14px; margin:6px 0 20px;}
+  .card .btn{background:linear-gradient(90deg,var(--good),var(--bad)); border:none; color:#08122a; font-weight:700;}
+  .confetti{position:fixed; width:10px;height:10px; border-radius:3px; z-index:6; pointer-events:none;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Lab Mission · Puzzle 2</div>
+  <h1>หา Cell ผิดปกติ</h1>
+  <div class="sub">ส่องกล้องหาเซลล์ที่รูปร่างเบี้ยวผิดปกติ แล้วแตะให้ครบ</div>
+</header>
+
+<div class="hud">
+  <div class="counter">พบแล้ว <b id="found">0</b> / <span id="total">4</span></div>
+</div>
+
+<div class="scope" id="scope">
+  <div class="cross"></div>
+</div>
+
+<div class="controls">
+  <button class="btn" id="hint">💡 ใบ้</button>
+  <button class="btn" id="reset">↻ เริ่มใหม่</button>
+</div>
+
+<div class="win" id="win">
+  <div class="card">
+    <div class="ok">🔬✨</div>
+    <h2>ตรวจพบครบแล้ว!</h2>
+    <p>แยกเซลล์ที่รูปร่างผิดปกติได้หมดแล้ว เก่งมาก!</p>
+    <button class="btn" id="next">เล่นอีกครั้ง</button>
+  </div>
+</div>
+
+<script>
+const scope = document.getElementById('scope');
+const foundEl = document.getElementById('found');
+const totalEl = document.getElementById('total');
+const TOTAL_CELLS = 14;   // เซลล์ทั้งหมด
+const BAD_CELLS = 4;      // เซลล์ผิดปกติที่ต้องหา
+let cells = [];
+let foundCount = 0;
+let raf = null;
+
+function rand(a,b){return a+Math.random()*(b-a);}
+
+function makeLevel(){
+  // clear
+  cells.forEach(c=>c.el.remove());
+  cells=[]; foundCount=0; foundEl.textContent='0';
+  totalEl.textContent=BAD_CELLS;
+  document.getElementById('win').classList.remove('show');
+
+  const rect = scope.getBoundingClientRect();
+  const S = rect.width;               // scope diameter (px)
+  const Rad = S/2;
+
+  const isBad = Array(TOTAL_CELLS).fill(false);
+  for(let i=0;i<BAD_CELLS;i++) isBad[i]=true;
+  // shuffle
+  for(let i=isBad.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;[isBad[i],isBad[j]]=[isBad[j],isBad[i]];}
+
+  for(let i=0;i<TOTAL_CELLS;i++){
+    const size = rand(S*0.11, S*0.155);
+    const r = size/2;
+    // random point inside circle (leave margin so cell stays inside)
+    let px,py, tries=0;
+    do{
+      const ang=Math.random()*Math.PI*2;
+      const dist=Math.sqrt(Math.random())*(Rad - r - 6);
+      px = Rad + Math.cos(ang)*dist;
+      py = Rad + Math.sin(ang)*dist;
+    }while(false);
+
+    const el=document.createElement('div');
+    el.className='cell '+(isBad[i]?'bad':'good');
+    el.style.width=el.style.height=size+'px';
+    el.innerHTML='<div class="nuc"></div>';
+    scope.appendChild(el);
+
+    const sp = 0.26;
+    const c={el, x:px, y:py, r,
+      vx:rand(-sp,sp), vy:rand(-sp,sp),
+      bad:isBad[i], done:false, S, Rad};
+    c.el.addEventListener('click',()=>onTap(c));
+    cells.push(c);
+    place(c);
+  }
+  if(raf) cancelAnimationFrame(raf);
+  loop();
+}
+
+function place(c){
+  c.el.style.transform=`translate(${c.x-c.r}px,${c.y-c.r}px)`;
+}
+
+function loop(){
+  cells.forEach(c=>{
+    if(c.done) return;
+    c.x+=c.vx; c.y+=c.vy;
+    // bounce off circular wall
+    const dx=c.x-c.Rad, dy=c.y-c.Rad;
+    const d=Math.hypot(dx,dy);
+    const lim=c.Rad - c.r - 4;
+    if(d>lim){
+      const nx=dx/d, ny=dy/d;
+      const dot=c.vx*nx+c.vy*ny;
+      c.vx-=2*dot*nx; c.vy-=2*dot*ny;
+      c.x=c.Rad+nx*lim; c.y=c.Rad+ny*lim;
+    }
+    place(c);
+  });
+  raf=requestAnimationFrame(loop);
+}
+
+function onTap(c){
+  if(c.done) return;
+  if(c.bad){
+    c.done=true;
+    c.el.classList.add('found');
+    foundCount++; foundEl.textContent=foundCount;
+    // checkmark pop
+    const chk=document.createElement('div');
+    chk.className='check'; chk.textContent='✓';
+    chk.style.left=(c.x-8)+'px'; chk.style.top=(c.y-10)+'px';
+    scope.appendChild(chk); setTimeout(()=>chk.remove(),650);
+    setTimeout(()=>c.el.remove(),500);
+    if(foundCount===BAD_CELLS) setTimeout(win,400);
+  }else{
+    // gentle ripple, no penalty
+    const rp=document.createElement('div');
+    rp.className='ripple';
+    const sz=c.r*2;
+    rp.style.width=rp.style.height=sz+'px';
+    rp.style.left=(c.x-c.r)+'px'; rp.style.top=(c.y-c.r)+'px';
+    scope.appendChild(rp); setTimeout(()=>rp.remove(),500);
+  }
+}
+
+function hint(){
+  cells.forEach(c=>{
+    if(c.bad && !c.done){
+      c.el.animate([
+        {boxShadow:'0 0 22px rgba(255,91,110,.6)'},
+        {boxShadow:'0 0 4px 12px rgba(255,255,255,.9)'},
+        {boxShadow:'0 0 22px rgba(255,91,110,.6)'}
+      ],{duration:800});
+    }
+  });
+}
+
+function win(){
+  document.getElementById('win').classList.add('show');
+  burst();
+}
+function burst(){
+  const cols=['#4fe3c8','#ff5b6e','#4da6ff','#ffb454'];
+  for(let i=0;i<60;i++){
+    const d=document.createElement('div');
+    d.className='confetti'; d.style.background=cols[i%4];
+    d.style.left='50%'; d.style.top='40%';
+    document.body.appendChild(d);
+    const ang=Math.random()*Math.PI*2, dist=120+Math.random()*260;
+    d.animate([
+      {transform:'translate(-50%,-50%) rotate(0deg)', opacity:1},
+      {transform:`translate(${Math.cos(ang)*dist-50}%,${Math.sin(ang)*dist-50}%) rotate(${Math.random()*720}deg)`, opacity:0}
+    ],{duration:1100+Math.random()*700, easing:'cubic-bezier(.15,.7,.3,1)'});
+    setTimeout(()=>d.remove(),1900);
+  }
+}
+
+document.getElementById('reset').addEventListener('click',makeLevel);
+document.getElementById('hint').addEventListener('click',hint);
+document.getElementById('next').addEventListener('click',makeLevel);
+
+// start after layout settles (so scope has a size)
+window.addEventListener('load',()=>setTimeout(makeLevel,60));
+window.addEventListener('resize',()=>{ /* keep simple: only relayout on reset */ });
+</script>
+</body>
+</html>
